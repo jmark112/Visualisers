@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Photoelectric Effect Visualiser</title>
+  <style>
+    body { font-family: Arial; background: #f0f0f0; padding: 20px; }
+    canvas { background: #fff; border: 1px solid #ccc; display: block; margin: 20px 0; }
+    label { display: block; margin-top: 10px; }
+    input[type=range] { width: 100%; }
+    .spectrum-bar {
+      display: flex;
+      height: 20px;
+      margin-top: 5px;
+      border: 1px solid #aaa;
+      position: relative;
+    }
+    .spectrum-segment {
+      flex: 1;
+    }
+    .uv { background: #aa00ff; }
+    .violet { background: #8a2be2; }
+    .indigo { background: #ffb6c1; }
+    .blue { background: #0000ff; }
+    .green { background: #00ff00; }
+    .yellow { background: #ffff00; }
+    .orange { background: #ffa500; }
+    .red { background: #ff0000; }
+    .ir { background: #8b0000; }
+    .threshold-marker {
+      position: absolute;
+      left: 72.22%; /* (750 - 100) / (1000 - 100) * 100 */
+      top: -5px;
+      width: 2px;
+      height: 30px;
+      background: black;
+    }
+    .threshold-label {
+      position: absolute;
+      top: 25px;
+      left: 70%;
+      font-size: 12px;
+    }
+    .waveform-canvas {
+      width: 100%;
+      height: 50px;
+      border: 1px solid #aaa;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Photoelectric Effect Visualiser</h1>
+  <canvas id="visualiser" width="800" height="400"></canvas>
+
+  <label for="frequencySlider">Light Frequency (THz): <span id="frequencyVal">400</span></label>
+  <input type="range" id="frequencySlider" min="100" max="1000" value="400">
+  <div class="spectrum-bar">
+    <div class="threshold-marker"></div>
+    <div class="threshold-label">Threshold Frequency</div>
+    <div class="spectrum-segment ir"></div>
+    <div class="spectrum-segment red"></div>
+    <div class="spectrum-segment orange"></div>
+    <div class="spectrum-segment yellow"></div>
+    <div class="spectrum-segment green"></div>
+    <div class="spectrum-segment blue"></div>
+    <div class="spectrum-segment indigo"></div>
+    <div class="spectrum-segment violet"></div>
+    <div class="spectrum-segment uv"></div>
+  </div>
+  <canvas id="waveform" class="waveform-canvas" width="800" height="50"></canvas>
+
+  <label for="intensitySlider">Light Intensity: <span id="intensityVal">50</span></label>
+  <input type="range" id="intensitySlider" min="0" max="100" value="50">
+
+  <script>
+    const canvas = document.getElementById('visualiser');
+    const ctx = canvas.getContext('2d');
+    const freqSlider = document.getElementById('frequencySlider');
+    const intensitySlider = document.getElementById('intensitySlider');
+    const freqVal = document.getElementById('frequencyVal');
+    const intensityVal = document.getElementById('intensityVal');
+    const waveformCanvas = document.getElementById('waveform');
+    const waveformCtx = waveformCanvas.getContext('2d');
+
+    const UV_THRESHOLD = 750;
+
+    function drawWaveform(frequency) {
+      waveformCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+      const lambda = 300000 / frequency; // nm, assuming c = 3e8 m/s and f in THz
+      const wavelengthPixels = lambda / 10; // scaled down
+      const amplitude = 20;
+      waveformCtx.beginPath();
+      waveformCtx.moveTo(0, 25);
+      for (let x = 0; x < waveformCanvas.width; x++) {
+        const y = 25 + amplitude * Math.sin((x / wavelengthPixels) * 2 * Math.PI);
+        waveformCtx.lineTo(x, y);
+      }
+      waveformCtx.strokeStyle = '#000';
+      waveformCtx.stroke();
+    }
+
+    function drawVisualiser(frequency, intensity) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Evacuated tube (smaller)
+      ctx.strokeStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(400, 200, 200, 60, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Cathode
+      ctx.fillStyle = '#228B22';
+      ctx.fillRect(250, 170, 15, 60);
+      ctx.fillText('Cathode', 235, 250);
+
+      // Anode
+      ctx.fillStyle = '#b22222';
+      ctx.fillRect(520, 170, 15, 60);
+      ctx.fillText('Anode', 520, 250);
+
+      // Photoelectrons
+      if (frequency >= UV_THRESHOLD && intensity > 0) {
+        for (let i = 0; i < 5; i++) {
+          ctx.beginPath();
+          ctx.arc(270 + i * 40, 200 + Math.random() * 10, 5, 0, Math.PI * 2);
+          ctx.fillStyle = 'black';
+          ctx.fill();
+        }
+      }
+
+      // Light rays from source
+      for (let i = 0; i < intensity / 10; i++) {
+        ctx.beginPath();
+        ctx.moveTo(100, 50);
+        ctx.lineTo(250 + Math.random() * 20, 170 + Math.random() * 60);
+        ctx.strokeStyle = `hsl(${Math.min((frequency - 100) * 0.3, 300)}, 100%, 50%)`;
+        ctx.stroke();
+      }
+
+      // Light source
+      ctx.beginPath();
+      ctx.arc(100, 50, 20, 0, Math.PI * 2);
+      ctx.fillStyle = `hsl(${Math.min((frequency - 100) * 0.3, 300)}, 100%, ${intensity / 2 + 50}%)`;
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.fillText('Light Source', 60, 90);
+
+      // Circuit
+      ctx.strokeStyle = '#000';
+      ctx.beginPath();
+      ctx.moveTo(535, 200);
+      ctx.lineTo(700, 200);
+      ctx.lineTo(700, 300);
+      ctx.lineTo(100, 300);
+      ctx.lineTo(100, 200);
+      ctx.lineTo(250, 200);
+      ctx.stroke();
+
+      let currentFlow = false;
+      let voltage = 0;
+      let current = 0;
+      if (frequency >= UV_THRESHOLD && intensity > 0) {
+        currentFlow = true;
+        voltage = (frequency - UV_THRESHOLD) * 0.05;
+        current = intensity * 0.1;
+      }
+
+      // Microammeter
+      ctx.beginPath();
+      ctx.arc(400, 300, 15, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillText(`µA`, 392, 305);
+      ctx.fillText(`${current.toFixed(1)} µA`, 375, 320);
+
+      // Display Bulb
+      ctx.beginPath();
+      ctx.arc(250, 300, 15, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = currentFlow ? `rgba(255, 255, 100, ${Math.min(voltage, 1)})` : 'rgba(0,0,0,0.1)';
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.fillText('Bulb', 240, 330);
+
+      if (currentFlow) {
+        for (let i = 0; i < voltage * 10; i++) {
+          let angle = Math.random() * 2 * Math.PI;
+          let radius = 20 + Math.random() * 10;
+          let x = 250 + Math.cos(angle) * radius;
+          let y = 300 + Math.sin(angle) * radius;
+          ctx.beginPath();
+          ctx.moveTo(250, 300);
+          ctx.lineTo(x, y);
+          ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
+          ctx.stroke();
+        }
+      }
+
+      // Voltmeter across bulb
+      ctx.beginPath();
+      ctx.arc(300, 270, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillText(`V`, 295, 275);
+      ctx.beginPath();
+      ctx.moveTo(290, 270);
+      ctx.lineTo(235, 300);
+      ctx.moveTo(310, 270);
+      ctx.lineTo(265, 300);
+      ctx.stroke();
+      ctx.fillText(`${voltage.toFixed(2)} V`, 285, 290);
+
+      drawWaveform(frequency);
+    }
+
+    freqSlider.addEventListener('input', () => {
+      freqVal.textContent = freqSlider.value;
+      drawVisualiser(Number(freqSlider.value), Number(intensitySlider.value));
+    });
+
+    intensitySlider.addEventListener('input', () => {
+      intensityVal.textContent = intensitySlider.value;
+      drawVisualiser(Number(freqSlider.value), Number(intensitySlider.value));
+    });
+
+    drawVisualiser(Number(freqSlider.value), Number(intensitySlider.value));
+  </script>
+</body>
+</html>
